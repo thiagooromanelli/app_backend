@@ -8,9 +8,9 @@ import (
 func ConfigRoutes(router *gin.Engine) *gin.Engine {
 	main := router.Group("api/v1")
 	{
-		books := main.Group("books")
+		users := main.Group("users")
 		{
-			books.GET("/", controllers.GetOk)
+			users.GET("/", controllers.HandleGetUsers)
 		}
 	}
 
