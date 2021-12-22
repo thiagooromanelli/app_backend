@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -9,6 +10,7 @@ import (
 
 	"app.com/backend/models"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -74,4 +76,69 @@ func GetAllUsers() ([]*models.User, error) {
 		return nil, err
 	}
 	return users, nil
+}
+
+// GetTaskByID Retrives a user by its id from db
+func GetUserByID(id primitive.ObjectID) (*models.User, error) {
+	var user *models.User
+
+	client, ctx, cancel := getConnection()
+	defer cancel()
+	defer client.Disconnect(ctx)
+	db := client.Database("users")
+	collection := db.Collection("users")
+	result := collection.FindOne(ctx, bson.D{})
+	if result == nil {
+		return nil, errors.New("could not find the requested user")
+	}
+	err := result.Decode(&user)
+
+	if err != nil {
+		log.Printf("Failed marshalling %v", err)
+		return nil, err
+	}
+	log.Printf("Users: %v", user)
+	return user, nil
+}
+
+//Create creating a task in a mongo
+func CreateUser(task *models.User) (primitive.ObjectID, error) {
+	client, ctx, cancel := getConnection()
+	defer cancel()
+	defer client.Disconnect(ctx)
+	task.ID = primitive.NewObjectID()
+
+	result, err := client.Database("users").Collection("users").InsertOne(ctx, task)
+	if err != nil {
+		log.Printf("Could not create User: %v", err)
+		return primitive.NilObjectID, err
+	}
+	oid := result.InsertedID.(primitive.ObjectID)
+	return oid, nil
+}
+
+//Update updating an existing user in mongo
+func UpdateUser(user *models.User) (*models.User, error) {
+	var updatedUser *models.User
+	client, ctx, cancel := getConnection()
+	defer cancel()
+	defer client.Disconnect(ctx)
+
+	update := bson.M{
+		"$set": user,
+	}
+
+	upsert := true
+	after := options.After
+	opt := options.FindOneAndUpdateOptions{
+		Upsert:         &upsert,
+		ReturnDocument: &after,
+	}
+
+	err := client.Database("users").Collection("users").FindOneAndUpdate(ctx, bson.M{"_id": user.ID}, update, &opt).Decode(&updatedUser)
+	if err != nil {
+		log.Printf("Could not save User: %v", err)
+		return nil, err
+	}
+	return updatedUser, nil
 }

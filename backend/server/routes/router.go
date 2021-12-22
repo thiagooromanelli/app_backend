@@ -11,6 +11,10 @@ func ConfigRoutes(router *gin.Engine) *gin.Engine {
 		users := main.Group("users")
 		{
 			users.GET("/", controllers.HandleGetUsers)
+			users.GET("/:id", controllers.HandleGetUserById)
+			users.POST("/", controllers.HandlePostUsers)
+			// users.PUT("/", controllers.)
+			// users.DELETE("/", controllers.HandleGetUsers)
 		}
 	}
 
